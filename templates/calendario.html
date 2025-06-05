@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendário de Medicamentos - {{ nav.current_month_display }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8f9fa; }
+        .calendar-table { table-layout: fixed; width: 100%; }
+        .calendar-table th, .calendar-table td {
+            vertical-align: top;
+            height: 110px; 
+            border: 1px solid #dee2e6;
+            padding: 0.3rem; 
+            font-size: 0.8rem; 
+        }
+        .calendar-table td .day-content-wrapper {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            height: 100%;
+            position: relative; 
+        }
+         .calendar-table td .day-content-holder { 
+            position: absolute;
+            top: 1.8em; 
+            left: 0;
+            right: 0;
+            bottom: 0;
+            overflow-y: auto;
+            padding: 0.1rem 0.2rem; 
+        }
+        .calendar-table td .day-content-holder::-webkit-scrollbar { width: 4px; }
+        .calendar-table td .day-content-holder::-webkit-scrollbar-thumb { background-color: #ced4da; border-radius: 4px; }
+        .calendar-table td .day-content-holder::-webkit-scrollbar-track { background-color: transparent; }
+
+
+        .calendar-table td.day-cell-clickable { cursor: pointer; }
+        .calendar-table td.day-cell-clickable:hover { background-color: #e9ecef; }
+        .calendar-table td.other-month { background-color: #f8f9fa; color: #adb5bd; cursor: default;}
+        .calendar-table td.other-month .day-number { color: #ced4da; }
+        .calendar-table td.today { background-color: #e9f5ff; border: 1px solid #0d6efd;}
+        .calendar-table td.today .day-number { color: #0d6efd; font-weight: bold;}
+
+        .day-number { 
+            font-size: 0.8em; 
+            font-weight: bold; 
+            display: block; 
+            text-align: right; 
+            padding-right: 0.2rem; 
+        }
+        .med-count-badge { 
+            font-size: 0.65em; 
+            padding: 0.2em 0.4em; 
+            position: absolute; 
+            bottom: 0.2rem;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .modal-med-entry {
+            font-size: 0.9rem; padding: 0.5rem 0.75rem; margin-bottom: 0.5rem;
+            border-radius: 0.25rem; background-color: #f1f3f5; 
+            border-left: 4px solid #17a2b8; display: flex;
+            align-items: center; justify-content: space-between;
+        }
+        .modal-med-entry.administered {
+            background-color: #d1e7dd; border-left-color: #198754; 
+            text-decoration: line-through; opacity: 0.8;
+        }
+        .modal-med-entry .form-check-input { margin-left: 0.75rem; transform: scale(1); flex-shrink: 0; }
+        .modal-med-time { font-weight: 600; margin-right: 0.75rem; color: #007bff; white-space: nowrap; flex-shrink: 0; }
+        .modal-med-name { flex-grow: 1; white-space: normal; word-wrap: break-word; overflow-wrap: break-word; line-height: 1.3; min-width: 0; }
+
+        @media (max-width: 767.98px) { 
+            .calendar-table th { font-size: 0.65rem; padding: 0.2rem 0.1rem; }
+            .calendar-table td { height: 80px; padding: 0.2rem; font-size: 0.7rem; }
+            .calendar-table td .day-content-holder { top: 1.5em; }
+            .day-number { font-size: 0.7em; }
+            .med-count-badge { font-size: 0.55em; padding: 0.15em 0.3em; }
+            
+            .calendar-nav-buttons .btn { padding: 0.25rem 0.5rem; font-size: 0.8rem; }
+            .calendar-nav-buttons .btn .fas { margin-right: 0.2rem !important; }
+            .calendar-nav-buttons h2.h4 { font-size: 1rem; margin-bottom: 0.5rem; } 
+            header .btn-sm { font-size: 0.75rem; padding: 0.2rem 0.4rem;}
+            header h1.h3 { font-size: 1.1rem; } 
+        }
+         @media (max-width: 480px) { 
+            .calendar-table th { font-size: 0.55rem; letter-spacing: -0.5px; } 
+            .calendar-table td { height: 70px; }
+            .day-number { font-size: 0.65em; }
+            .med-count-badge { font-size: 0.5em; padding: 0.1em 0.2em; }
+            .calendar-nav-buttons .btn span.d-none.d-sm-inline { display: none !important; }
+            .calendar-nav-buttons h2.h4 { font-size: 0.9rem; } 
+            header .btn-sm span.d-none.d-sm-inline { display: none !important; }
+            header .btn-sm .fas { margin-right: 0 !important; }
+            header h1.h3 { font-size: 1rem; }
+            header h1.h3 .d-none.d-sm-inline {display: none !important;} 
+         }
+    </style>
+</head>
+<body class="d-flex flex-column min-vh-100">
+    <header class="bg-primary text-white shadow-sm py-3">
+        <div class="container d-flex justify-content-between align-items-center">
+            <h1 class="h3 mb-0">
+                <i class="fas fa-calendar-alt me-2"></i>
+                <span class="d-none d-sm-inline">Calendário de </span>Medicamentos
+            </h1>
+            <div>
+                <a href="{{ url_for('index') }}" class="btn btn-outline-light btn-sm me-2" title="Lista Principal">
+                    <i class="fas fa-arrow-left"></i> <span class="d-none d-sm-inline">Lista</span>
+                </a>
+                <a href="{{ url_for('historico') }}" class="btn btn-outline-light btn-sm" title="Histórico">
+                    <i class="fas fa-history"></i> <span class="d-none d-sm-inline">Histórico</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main class="container my-4 flex-grow-1">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="mb-4">
+                {% for category, message in messages %}
+                    <div class="alert {% if category == 'error' %}alert-danger{% elif category == 'success' %}alert-success{% else %}alert-info{% endif %} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-center mb-4 p-3 bg-light border rounded calendar-nav-buttons">
+            <a href="{{ url_for('calendario_view', year=nav.prev_year, month=nav.prev_month) }}" class="btn btn-outline-primary mb-2 mb-sm-0">
+                <i class="fas fa-chevron-left me-1"></i> <span class="d-none d-sm-inline">Mês Anterior</span>
+            </a>
+            <h2 class="h4 mb-2 mb-sm-0 text-center mx-md-auto">{{ nav.current_month_display }}</h2>
+            <div class="d-flex ms-sm-auto"> 
+                <a href="{{ url_for('exportar_calendario_ics', year=year, month=month) }}" class="btn btn-sm btn-success me-2 mb-2 mb-sm-0" title="Exportar para Google Agenda, etc.">
+                    <i class="fas fa-file-medical me-1"></i> <span class="d-none d-sm-inline">Exportar ICS</span>
+                </a>
+                <a href="{{ url_for('calendario_view', year=nav.next_year, month=nav.next_month) }}" class="btn btn-outline-primary mb-2 mb-sm-0">
+                    <span class="d-none d-sm-inline">Mês Seguinte</span> <i class="fas fa-chevron-right ms-1"></i>
+                </a>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table calendar-table">
+                <thead class="table-light">
+                    <tr>
+                        {% for day_name in ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"] %}
+                            <th scope="col" class="text-center">{{ day_name }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for week in month_days_dates %}
+                    <tr>
+                        {% for day_date_obj in week %}
+                            {% set current_day_str = day_date_obj.strftime('%Y-%m-%d') %}
+                            {% set is_current_month_day = day_date_obj.month == month %}
+                            {% set is_today_marker = current_day_str == nav.today_str %}
+                            {% set doses_do_dia = medicamentos_por_dia.get(current_day_str, []) %}
+                            <td class="
+                                {% if not is_current_month_day %}other-month{% endif %}
+                                {% if is_today_marker %}today{% endif %}
+                                {% if is_current_month_day and doses_do_dia %}day-cell-clickable{% endif %}
+                            " 
+                            {% if is_current_month_day and doses_do_dia %}
+                                data-bs-toggle="modal" 
+                                data-bs-target="#medicationDayModal" 
+                                data-day-date="{{ current_day_str }}"
+                                data-day-formatted="{{ day_date_obj.strftime('%d/%m/%Y') }}"
+                            {% endif %}
+                            >
+                                <div class="day-content-wrapper">
+                                    <span class="day-number">{{ day_date_obj.day if is_current_month_day else '' }}</span>
+                                    {% if is_current_month_day and doses_do_dia %}
+                                        <div class="text-center mt-auto">
+                                            <span class="badge rounded-pill bg-primary med-count-badge">
+                                                {{ doses_do_dia|length }} med{% if doses_do_dia|length != 1 %}s{% endif %}
+                                            </span>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <!-- Modal para Medicamentos do Dia -->
+    <div class="modal fade" id="medicationDayModal" tabindex="-1" aria-labelledby="medicationDayModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="medicationDayModalLabel">Medicamentos para <span id="modalDateDisplay"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="modalDayMedicationsList">
+                    <!-- Lista de medicamentos será injetada aqui pelo JavaScript -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-dark text-white text-center py-4 mt-auto">
+        <div class="container">
+            <p class="mb-0">&copy; <span id="currentYearFooterCal"></span> Gerenciador de Medicamentos. Todos os direitos reservados.</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentYearEl = document.getElementById('currentYearFooterCal');
+            if(currentYearEl) currentYearEl.textContent = new Date().getFullYear();
+
+            const medicationDayModalEl = document.getElementById('medicationDayModal');
+            const medicationDayModal = new bootstrap.Modal(medicationDayModalEl);
+            const modalDateDisplay = document.getElementById('modalDateDisplay');
+            const modalDayMedicationsList = document.getElementById('modalDayMedicationsList');
+            
+            let medicamentosPorDia;
+            try {
+                // CORREÇÃO AQUI: Removido o | replace(...)
+                medicamentosPorDia = JSON.parse('{{ medicamentos_por_dia | tojson | safe }}') || {};
+            } catch (e) {
+                console.error("Erro ao parsear medicamentos_por_dia:", e);
+                medicamentosPorDia = {};
+            }
+
+            document.querySelectorAll('.day-cell-clickable').forEach(cell => {
+                cell.addEventListener('click', function() {
+                    const dayDateStr = this.dataset.dayDate; 
+                    const dayFormatted = this.dataset.dayFormatted; 
+                    
+                    modalDateDisplay.textContent = dayFormatted;
+                    modalDayMedicationsList.innerHTML = ''; 
+
+                    const dosesDoDia = medicamentosPorDia[dayDateStr] || [];
+
+                    if (dosesDoDia.length > 0) {
+                        dosesDoDia.forEach(dose => {
+                            const doseKeyHtml = `${dose.med_id}-${dayDateStr}-${dose.hora_str.replace(':', '')}`;
+                            const medEntryDiv = document.createElement('div');
+                            medEntryDiv.className = `modal-med-entry ${dose.is_administered ? 'administered' : ''}`;
+                            medEntryDiv.id = `modal-dose-${doseKeyHtml}`;
+                            
+                            medEntryDiv.innerHTML = `
+                                <span class="modal-med-time">${dose.hora_str}</span>
+                                <span class="modal-med-name" title="${dose.nome}">${dose.nome}</span>
+                                <input class="form-check-input medication-checkbox-modal" 
+                                       type="checkbox" 
+                                       data-med-id="${dose.med_id}"
+                                       data-dose-date="${dayDateStr}"
+                                       data-dose-time="${dose.hora_str}"
+                                       ${dose.is_administered ? 'checked' : ''}>
+                            `;
+                            modalDayMedicationsList.appendChild(medEntryDiv);
+                        });
+                    } else {
+                        modalDayMedicationsList.innerHTML = '<p class="text-muted text-center">Nenhum medicamento agendado para este dia.</p>';
+                    }
+                    attachCheckboxListenersToModal();
+                });
+            });
+
+            function attachCheckboxListenersToModal() {
+                document.querySelectorAll('.medication-checkbox-modal').forEach(checkbox => {
+                    checkbox.removeEventListener('change', handleModalCheckboxChange); 
+                    checkbox.addEventListener('change', handleModalCheckboxChange);
+                });
+            }
+
+            async function handleModalCheckboxChange(event) {
+                const checkbox = event.target;
+                const medId = checkbox.dataset.medId;
+                const doseDate = checkbox.dataset.doseDate;
+                const doseTime = checkbox.dataset.doseTime; 
+                const isChecked = checkbox.checked;
+                const doseEntryDiv = checkbox.closest('.modal-med-entry');
+
+                try {
+                    const response = await fetch("{{ url_for('marcar_administrado') }}", {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            medicamento_id: medId,
+                            data_dose: doseDate,
+                            hora_dose: doseTime, 
+                            foi_administrado: isChecked
+                        })
+                    });
+                    const result = await response.json();
+                    if (result.success) {
+                        if (isChecked) {
+                            doseEntryDiv.classList.add('administered');
+                        } else {
+                            doseEntryDiv.classList.remove('administered');
+                        }
+                        if (medicamentosPorDia[doseDate]) {
+                            const doseToUpdate = medicamentosPorDia[doseDate].find(d => d.med_id === medId && d.hora_str === doseTime);
+                            if (doseToUpdate) {
+                                doseToUpdate.is_administered = isChecked;
+                            }
+                        }
+
+                    } else {
+                        alert('Erro ao atualizar status: ' + (result.message || 'Erro desconhecido'));
+                        checkbox.checked = !isChecked; 
+                        if (isChecked) doseEntryDiv.classList.remove('administered');
+                        else doseEntryDiv.classList.add('administered');
+                    }
+                } catch (error) {
+                    console.error('Erro na requisição:', error);
+                    alert('Erro de comunicação ao atualizar status.');
+                    checkbox.checked = !isChecked; 
+                    if (isChecked) doseEntryDiv.classList.remove('administered');
+                    else doseEntryDiv.classList.add('administered');
+                }
+            }
+        });
+    </script>
+</body>
+</html>

@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gerenciador de Medicamentos - Flask & Bootstrap</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" xintegrity="sha384-GLhlTQ8iRABdZLl6O3oVMWSktQOp6b7In1Zl3/Jr59b6EGGoI1aFkw7cmDA6j6gD" crossorigin="anonymous">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css" xintegrity="sha512-xh6O/CkQoPOWDdYTDqeRdPCVd1SpvCA9XXcUnZS2FmJNp1coAFzvtCN9BmamE+4aHK8yyUHUSCcJHgXloTyT2A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
         body {
@@ -21,7 +21,7 @@
             padding: 0.3rem 0.6rem;
             font-size: 0.8rem;
         }
-        .card-header .btn-link {
+        .card-header .btn-link { /* Para acordeões Bootstrap mais antigos, não usado aqui */
             text-decoration: none;
             color: inherit;
             width: 100%;
@@ -35,17 +35,56 @@
          input[type="number"] {
             -moz-appearance: textfield;
          }
+         /* ----- Media Queries para Responsividade ----- */
+        @media (max-width: 767.98px) { /* Telas pequenas (Bootstrap < md) */
+            .main-header h1.h3 {
+                font-size: 1.25rem; /* Tamanho do título principal */
+            }
+            .main-header .btn-sm { /* Botões no header */
+                 font-size: 0.75rem;
+                 padding: 0.2rem 0.4rem;
+            }
+            .btn-lg-main-action { /* Botão 'Adicionar Novo Medicamento' */
+                font-size: 0.9rem;
+                padding: 0.5rem 1rem;
+            }
+            .form-section legend { font-size: 0.9rem; }
+            .form-label, .form-label-sm, .form-check-label { font-size: 0.8rem; }
+            .form-control, .form-select, .form-control-sm { font-size: 0.85rem; padding-top: 0.4rem; padding-bottom: 0.4rem;}
+            
+            .accordion-button { font-size: 0.9rem; padding: 0.75rem 1rem;}
+            .list-group-item h5.h6 { font-size: 0.9rem; }
+            .list-group-item small, .list-group-item .badge { font-size: 0.7rem; }
+            .list-group-item .btn-sm { padding: 0.15rem 0.3rem; font-size:0.7rem; }
+            .list-group-item .btn-sm .fas { font-size:0.8em; }
+        }
+         @media (max-width: 480px) { /* Telas ainda menores */
+            .main-header h1.h3 .d-none.d-sm-inline { display: none !important; } /* Esconde parte do título */
+            .main-header .btn-sm span.d-none.d-sm-inline { display: none !important; }
+            .main-header .btn-sm .fas { margin-right: 0 !important; }
+            .btn-lg-main-action .fas { margin-right: 0.3rem !important; }
+
+            .accordion-button { font-size: 0.85rem; padding: 0.6rem 0.8rem;}
+            .list-group-item h5.h6 { font-size: 0.85rem; }
+            .list-group-item small, .list-group-item .badge { font-size: 0.65rem; }
+         }
     </style>
 </head>
 <body class="d-flex flex-column min-vh-100">
-    <header class="bg-primary text-white shadow-sm py-3">
+    <header class="bg-primary text-white shadow-sm py-3 main-header">
         <div class="container d-flex justify-content-between align-items-center">
-            <h1 class="h3 mb-0 text-center text-sm-start">
-                <i class="fas fa-pills me-2"></i>Gerenciador de Medicamentos (Flask & Bootstrap)
+            <h1 class="h3 mb-0">
+                <i class="fas fa-pills me-2"></i>
+                <span class="d-none d-sm-inline">Gerenciador de </span>Medicamentos
             </h1>
-            <a href="{{ url_for('historico') }}" class="btn btn-outline-light btn-sm">
-                <i class="fas fa-history me-1"></i> Ver Histórico
-            </a>
+            <div>
+                <a href="{{ url_for('calendario_view') }}" class="btn btn-outline-light btn-sm me-2" title="Calendário">
+                    <i class="fas fa-calendar-alt"></i> <span class="d-none d-sm-inline">Calendário</span>
+                </a>
+                <a href="{{ url_for('historico') }}" class="btn btn-outline-light btn-sm" title="Histórico">
+                    <i class="fas fa-history"></i> <span class="d-none d-sm-inline">Histórico</span>
+                </a>
+            </div>
         </div>
     </header>
 
@@ -69,7 +108,7 @@
         {% endwith %}
 
         <div class="mb-4 text-center">
-            <button id="toggleFormButton" class="btn btn-primary btn-lg">
+            <button id="toggleFormButton" class="btn btn-primary btn-lg btn-lg-main-action">
                 <i id="toggleFormIcon" class="fas fa-plus-circle me-2"></i>
                 <span id="toggleFormText">Adicionar Novo Medicamento</span>
             </button>
@@ -156,7 +195,7 @@
                         <div class="col-md-4">
                             <label for="unit" class="form-label">Unidade</label>
                             <select id="unit" name="unit" class="form-select">
-                                </select>
+                            </select>
                         </div>
                     </div>
 
@@ -206,7 +245,7 @@
                                     <li class="list-group-item px-0 py-3">
                                         <div class="d-flex w-100 justify-content-between">
                                             <h5 class="mb-1 h6 fw-bold">{{ med.name }}</h5>
-                                            <small class="text-muted">
+                                            <div class="ms-2 text-nowrap"> {# text-nowrap para botões não quebrarem #}
                                                 <a href="{{ url_for('edit_medication', med_id=med.id) }}" class="btn btn-sm btn-outline-warning me-1" title="Editar">
                                                     <i class="fas fa-edit"></i>
                                                 </a>
@@ -216,7 +255,7 @@
                                                         <i class="fas fa-archive"></i>
                                                     </button>
                                                 </form>
-                                            </small>
+                                            </div>
                                         </div>
                                         {% if med.descricao %}
                                         <p class="mb-1 small text-muted" style="white-space: pre-wrap;">{{ med.descricao }}</p>
@@ -256,8 +295,8 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Adiciona validação do Bootstrap aos formulários
-        (function () { /* ... (código de validação Bootstrap como antes) ... */ 
+        // Validação Bootstrap
+        (function () { 
           'use strict'
           var forms = document.querySelectorAll('.needs-validation')
           Array.prototype.slice.call(forms)
@@ -320,166 +359,99 @@
             const formTypeSelect = document.getElementById('formType');
             const unitSelect = document.getElementById('unit');
 
-            function calculateEndDate() {
+            function calculateEndDate() { /* ... (como antes) ... */ 
                 if (!startDateInput || !durationDaysInput || !endDateInput) return;
                 const startDateString = startDateInput.value;
                 const duration = parseInt(durationDaysInput.value, 10);
-
                 if (startDateString && duration > 0) {
                     const startDate = new Date(startDateString + "T00:00:00Z"); 
                     if (isNaN(startDate.getTime())) return;
-
                     const endDate = new Date(startDate);
                     endDate.setUTCDate(startDate.getUTCDate() + duration - 1); 
                     endDateInput.value = endDate.toISOString().split('T')[0];
                 }
             }
-
-            function populateTimesBasedOnFrequency() {
+            function populateTimesBasedOnFrequency() { /* ... (como antes) ... */
                 if (!firstDoseTimeInput || !frequencyHoursInput || !timesContainer) return;
                 const firstDoseString = firstDoseTimeInput.value;
                 const frequency = parseInt(frequencyHoursInput.value, 10);
-
                 if (!firstDoseString || !frequency || frequency <= 0) return;
-
                 timesContainer.innerHTML = '';
                 let [hours, minutes] = firstDoseString.split(':').map(Number);
-
                 for (let i = 0; (i * frequency) < 24; i++) {
                     const currentTotalMinutes = (hours * 60 + minutes) + (i * frequency * 60);
                     const displayHour = Math.floor(currentTotalMinutes / 60) % 24;
                     const displayMinute = currentTotalMinutes % 60;
-                    
                     const timeString = `${String(displayHour).padStart(2, '0')}:${String(displayMinute).padStart(2, '0')}`;
                     addTimeFieldElement(timeString, false);
                 }
             }
-            
-            function updateUnitOptions() {
+            function updateUnitOptions() { /* ... (como antes, com a lógica de dataset para edição) ... */
                 if (!formTypeSelect || !unitSelect) return;
                 const currentFormType = formTypeSelect.value;
                 let currentUnitValue = unitSelect.value; 
-
                 const isEditing = document.querySelector('form#medicationForm').action.includes('/edit/');
                 const editingMedUnit = isEditing ? unitSelect.dataset.editingValue : null;
+                const initialFormType = isEditing ? formTypeSelect.dataset.editingForm : null;
 
-
-                if (isEditing && editingMedUnit && document.querySelector('form#medicationForm select#formType').value === document.querySelector('form#medicationForm select#formType').dataset.editingForm) {
+                if (isEditing && editingMedUnit && currentFormType === initialFormType) {
                      currentUnitValue = editingMedUnit;
-                } else if (!isEditing) { 
-                    if (currentFormType === 'comprimido') currentUnitValue = 'unidade';
-                    else if (currentFormType === 'liquido') currentUnitValue = 'ml';
-                    else if (currentFormType === 'bombinha') currentUnitValue = 'jato';
                 } else { 
                     if (currentFormType === 'comprimido') currentUnitValue = 'unidade';
                     else if (currentFormType === 'liquido') currentUnitValue = 'ml';
                     else if (currentFormType === 'bombinha') currentUnitValue = 'jato';
                 }
-
                 unitSelect.innerHTML = '';
-
-                if (currentFormType === 'comprimido') {
-                    unitSelect.add(new Option('Unidade(s)', 'unidade'));
-                } else if (currentFormType === 'liquido') {
-                    unitSelect.add(new Option('ml', 'ml'));
-                    unitSelect.add(new Option('Gotas', 'gotas'));
-                } else if (currentFormType === 'bombinha') {
-                    unitSelect.add(new Option('Jato(s)', 'jato'));
-                } else {
-                    unitSelect.add(new Option('Unidade(s)', 'unidade'));
-                }
+                if (currentFormType === 'comprimido') unitSelect.add(new Option('Unidade(s)', 'unidade'));
+                else if (currentFormType === 'liquido') { unitSelect.add(new Option('ml', 'ml')); unitSelect.add(new Option('Gotas', 'gotas'));}
+                else if (currentFormType === 'bombinha') unitSelect.add(new Option('Jato(s)', 'jato'));
+                else unitSelect.add(new Option('Unidade(s)', 'unidade'));
                 
-                if (Array.from(unitSelect.options).some(opt => opt.value === currentUnitValue)) {
-                    unitSelect.value = currentUnitValue;
-                } else if (unitSelect.options.length > 0) {
-                     unitSelect.value = unitSelect.options[0].value;
-                }
+                if (Array.from(unitSelect.options).some(opt => opt.value === currentUnitValue)) unitSelect.value = currentUnitValue;
+                else if (unitSelect.options.length > 0) unitSelect.value = unitSelect.options[0].value;
             }
-            
             if (formTypeSelect && document.querySelector('form#medicationForm').action.includes('/edit/')) {
                 formTypeSelect.dataset.editingForm = formTypeSelect.value;
                 if (unitSelect) unitSelect.dataset.editingValue = unitSelect.value;
             }
             if (formTypeSelect) updateUnitOptions();
 
-
-            function addTimeFieldElement(timeValue = '', clearFrequencyFields = true) {
+            function addTimeFieldElement(timeValue = '', clearFrequencyFields = true) { /* ... (como antes) ... */
                 if (!timesContainer) return;
                 const newTimeGroup = document.createElement('div');
                 newTimeGroup.className = 'input-group input-group-sm mb-2 time-input-group';
                 newTimeGroup.innerHTML = `
                     <input type="time" name="times[]" value="${timeValue}" class="form-control">
-                    <button type="button" class="btn btn-outline-danger btn-remove-time" aria-label="Remover Horário">
-                        <i class="fas fa-times"></i>
-                    </button>
-                `;
+                    <button type="button" class="btn btn-outline-danger btn-remove-time" aria-label="Remover Horário"><i class="fas fa-times"></i></button>`;
                 const removeButton = newTimeGroup.querySelector('.btn-remove-time');
                 const timeInputInGroup = newTimeGroup.querySelector('input[name="times[]"]');
-
                 removeButton.addEventListener('click', (e) => {
                     e.currentTarget.closest('.time-input-group').remove();
-                    if (clearFrequencyFields) {
-                        if(firstDoseTimeInput) firstDoseTimeInput.value = '';
-                        if(frequencyHoursInput) frequencyHoursInput.value = '';
-                    }
+                    if (clearFrequencyFields) { if(firstDoseTimeInput) firstDoseTimeInput.value = ''; if(frequencyHoursInput) frequencyHoursInput.value = '';}
                 });
-                
-                if (clearFrequencyFields) {
-                    timeInputInGroup.addEventListener('change', () => {
-                        if(firstDoseTimeInput) firstDoseTimeInput.value = '';
-                        if(frequencyHoursInput) frequencyHoursInput.value = '';
-                    });
-                }
+                if (clearFrequencyFields) timeInputInGroup.addEventListener('change', () => { if(firstDoseTimeInput) firstDoseTimeInput.value = ''; if(frequencyHoursInput) frequencyHoursInput.value = '';});
                 timesContainer.appendChild(newTimeGroup);
-                if (!timeValue && clearFrequencyFields) {
-                    timeInputInGroup.focus();
-                }
+                if (!timeValue && clearFrequencyFields) timeInputInGroup.focus();
             }
             
             if (startDateInput) startDateInput.addEventListener('change', calculateEndDate);
             if (durationDaysInput) durationDaysInput.addEventListener('input', calculateEndDate);
             if (endDateInput) endDateInput.addEventListener('change', () => { if(durationDaysInput) durationDaysInput.value = ''; });
-            
             if (firstDoseTimeInput) firstDoseTimeInput.addEventListener('change', populateTimesBasedOnFrequency);
             if (frequencyHoursInput) frequencyHoursInput.addEventListener('input', populateTimesBasedOnFrequency);
-
-            if (addTimeButton) {
-                addTimeButton.addEventListener('click', () => {
-                    addTimeFieldElement();
-                    if(firstDoseTimeInput) firstDoseTimeInput.value = '';
-                    if(frequencyHoursInput) frequencyHoursInput.value = '';
-                });
-            }
-            
-            document.querySelectorAll('#timesContainer .btn-remove-time').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.currentTarget.closest('.time-input-group').remove();
-                    if(firstDoseTimeInput) firstDoseTimeInput.value = '';
-                    if(frequencyHoursInput) frequencyHoursInput.value = '';
-                });
-            });
-            document.querySelectorAll('#timesContainer input[name="times[]"]').forEach(timeInput => {
-                timeInput.addEventListener('change', () => {
-                    if(firstDoseTimeInput) firstDoseTimeInput.value = '';
-                    if(frequencyHoursInput) frequencyHoursInput.value = '';
-                });
-            });
-
-            if (formTypeSelect) {
-                formTypeSelect.addEventListener('change', updateUnitOptions);
-            }
+            if (addTimeButton) addTimeButton.addEventListener('click', () => { addTimeFieldElement(); if(firstDoseTimeInput) firstDoseTimeInput.value = ''; if(frequencyHoursInput) frequencyHoursInput.value = '';});
+            document.querySelectorAll('#timesContainer .btn-remove-time').forEach(btn => btn.addEventListener('click', (e) => { e.currentTarget.closest('.time-input-group').remove(); if(firstDoseTimeInput) firstDoseTimeInput.value = ''; if(frequencyHoursInput) frequencyHoursInput.value = '';}));
+            document.querySelectorAll('#timesContainer input[name="times[]"]').forEach(timeInput => timeInput.addEventListener('change', () => {if(firstDoseTimeInput) firstDoseTimeInput.value = ''; if(frequencyHoursInput) frequencyHoursInput.value = '';}));
+            if (formTypeSelect) formTypeSelect.addEventListener('change', updateUnitOptions);
 
             const exportButton = document.getElementById('exportButton');
             const copiedMessageEl = document.getElementById('copiedMessage');
-
-            function generateExportText() { /* ... (código de exportação como antes, ajustado para Bootstrap se necessário) ... */ 
-                let text = `Lista de Medicamentos Atuais\n`;
+            function generateExportText() { /* ... (como antes) ... */ 
+                 let text = `Lista de Medicamentos Atuais\n`;
                 text += `Exportado em: ${new Date().toLocaleString('pt-BR', {dateStyle: 'short', timeStyle: 'short'})}\n\n`;
-                
                 document.querySelectorAll('#medicationAccordion .accordion-item').forEach(item => {
                     const timeHeader = item.querySelector('.accordion-button');
                     if (timeHeader) text += `${timeHeader.textContent.replace(/\s*\d+\s*$/, '').trim()}\n`;
-                    
                     item.querySelectorAll('.list-group-item').forEach(medLi => {
                         const name = medLi.querySelector('h5').textContent.trim();
                         const descP = medLi.querySelector('p.small.text-muted');
@@ -487,10 +459,8 @@
                         const details = medLi.querySelectorAll('small.d-block.text-muted');
                         const quantityUnitElement = Array.from(details).find(el => el.querySelector('.fa-prescription-bottle-alt'));
                         const quantityUnit = quantityUnitElement ? quantityUnitElement.textContent.replace(/\s+/g, ' ').trim() : '';
-                        
                         const datesInfoElement = Array.from(details).find(el => el.querySelector('.fa-calendar-alt'));
                         const datesInfo = datesInfoElement ? datesInfoElement.textContent.replace(/\s+/g, ' ').trim() : '';
-
                         text += `  - ${name} (${quantityUnit})\n`;
                         if (descricao) text += `    Descrição: ${descricao}\n`;
                         text += `    ${datesInfo}\n`;
@@ -499,60 +469,25 @@
                 });
                 return text;
             }
-
-            if (exportButton) {
-                exportButton.addEventListener('click', () => {
-                     const medicationItems = document.querySelectorAll('#medicationAccordion .list-group-item');
-                    if (medicationItems.length === 0) {
-                        alert("Nenhum medicamento atual para exportar.");
-                        return;
-                    }
-                    const textToCopy = generateExportText();
-                    try {
-                        if (navigator.clipboard && navigator.clipboard.writeText) {
-                            navigator.clipboard.writeText(textToCopy)
-                                .then(() => {
-                                    if(copiedMessageEl) copiedMessageEl.classList.remove('d-none');
-                                    setTimeout(() => { if(copiedMessageEl) copiedMessageEl.classList.add('d-none'); }, 2500);
-                                })
-                                .catch(err => fallbackCopyToClipboard(textToCopy));
-                        } else { 
-                            fallbackCopyToClipboard(textToCopy);
-                        }
-                    } catch (error) {
-                        alert('Erro ao copiar. Verifique o console.');
-                    }
-                });
-            }
-
-            function fallbackCopyToClipboard(text) { /* ... (código de fallback como antes) ... */ 
-                const textArea = document.createElement("textarea");
-                textArea.value = text;
-                textArea.style.position = "fixed"; 
-                textArea.style.top = "-9999px";
-                textArea.style.left = "-9999px";
-                document.body.appendChild(textArea);
-                textArea.focus();
-                textArea.select();
+            if (exportButton) exportButton.addEventListener('click', () => { /* ... (como antes) ... */ 
+                const medicationItems = document.querySelectorAll('#medicationAccordion .list-group-item');
+                if (medicationItems.length === 0) { alert("Nenhum medicamento atual para exportar."); return; }
+                const textToCopy = generateExportText();
+                try {
+                    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(textToCopy).then(() => { if(copiedMessageEl) copiedMessageEl.classList.remove('d-none'); setTimeout(() => { if(copiedMessageEl) copiedMessageEl.classList.add('d-none'); }, 2500);}).catch(err => fallbackCopyToClipboard(textToCopy));
+                    else fallbackCopyToClipboard(textToCopy);
+                } catch (error) { alert('Erro ao copiar. Verifique o console.');}
+            });
+            function fallbackCopyToClipboard(text) { /* ... (como antes) ... */ 
+                const textArea = document.createElement("textarea"); textArea.value = text; textArea.style.position = "fixed"; textArea.style.top = "-9999px"; textArea.style.left = "-9999px"; document.body.appendChild(textArea); textArea.focus(); textArea.select();
                 try {
                     const successful = document.execCommand('copy');
-                    if (successful) {
-                        if(copiedMessageEl) copiedMessageEl.classList.remove('d-none');
-                        setTimeout(() => { if(copiedMessageEl) copiedMessageEl.classList.add('d-none'); }, 2500);
-                    } else {
-                        alert('Falha ao copiar para a área de transferência.');
-                    }
-                } catch (err) {
-                    alert('Erro ao copiar. Verifique o console.');
-                }
+                    if (successful) { if(copiedMessageEl) copiedMessageEl.classList.remove('d-none'); setTimeout(() => { if(copiedMessageEl) copiedMessageEl.classList.add('d-none'); }, 2500);}
+                    else alert('Falha ao copiar para a área de transferência.');
+                } catch (err) { alert('Erro ao copiar. Verifique o console.');}
                 document.body.removeChild(textArea);
             }
-            
-            if (document.querySelector('form#medicationForm').action.includes('/edit/')) {
-                 updateToggleButton(true);
-                 medicationFormContainer.classList.remove('d-none');
-             }
-
+            if (document.querySelector('form#medicationForm').action.includes('/edit/')) { updateToggleButton(true); medicationFormContainer.classList.remove('d-none');}
             const currentYearEl = document.getElementById('currentYear');
             if(currentYearEl) currentYearEl.textContent = new Date().getFullYear();
         });

@@ -12,17 +12,39 @@
             font-family: 'Inter', sans-serif;
             background-color: #f8f9fa;
         }
+         /* ----- Media Queries para Responsividade ----- */
+        @media (max-width: 767.98px) { /* Telas pequenas (Bootstrap < md) */
+            .main-header h1.h3 { font-size: 1.25rem; }
+            .main-header .btn-sm { font-size: 0.75rem; padding: 0.2rem 0.4rem;}
+            .accordion-button { font-size: 0.9rem; padding: 0.75rem 1rem;}
+            .list-group-item h5.h6 { font-size: 0.9rem; }
+            .list-group-item small, .list-group-item .badge { font-size: 0.7rem; }
+        }
+         @media (max-width: 480px) { /* Telas ainda menores */
+            .main-header h1.h3 .d-none.d-sm-inline { display: none !important; }
+            .main-header .btn-sm span.d-none.d-sm-inline { display: none !important; }
+            .main-header .btn-sm .fas { margin-right: 0 !important; }
+            .accordion-button { font-size: 0.85rem; padding: 0.6rem 0.8rem;}
+            .list-group-item h5.h6 { font-size: 0.85rem; }
+            .list-group-item small, .list-group-item .badge { font-size: 0.65rem; }
+         }
     </style>
 </head>
 <body class="d-flex flex-column min-vh-100">
-    <header class="bg-primary text-white shadow-sm py-3">
+    <header class="bg-primary text-white shadow-sm py-3 main-header">
         <div class="container d-flex justify-content-between align-items-center">
             <h1 class="h3 mb-0">
-                <i class="fas fa-history me-2"></i>Histórico de Medicamentos
+                <i class="fas fa-history me-2"></i>
+                <span class="d-none d-sm-inline">Histórico de </span>Medicamentos
             </h1>
-            <a href="{{ url_for('index') }}" class="btn btn-light btn-sm">
-                <i class="fas fa-arrow-left me-1"></i>Voltar à Lista Principal
-            </a>
+            <div>
+                <a href="{{ url_for('index') }}" class="btn btn-outline-light btn-sm me-2" title="Lista Principal">
+                    <i class="fas fa-arrow-left"></i> <span class="d-none d-sm-inline">Lista Principal</span>
+                </a>
+                <a href="{{ url_for('calendario_view') }}" class="btn btn-outline-light btn-sm" title="Calendário">
+                    <i class="fas fa-calendar-alt"></i> <span class="d-none d-sm-inline">Calendário</span>
+                </a>
+            </div>
         </div>
     </header>
 
@@ -55,7 +77,13 @@
                             <ul class="list-group list-group-flush">
                                 {% for med in medicamentos_no_mes %}
                                 <li class="list-group-item px-0 py-3 {% if med.is_archived %}opacity-75 bg-light{% endif %}">
-                                    <h5 class="mb-1 h6 fw-bold">{{ med.name }} {% if med.is_archived %}<span class="badge bg-warning text-dark ms-2">Arquivado</span>{% endif %}</h5>
+                                    <h5 class="mb-1 h6 fw-bold">{{ med.name }} 
+                                        {% if med.is_archived %}
+                                            <span class="badge bg-warning text-dark ms-2">Arquivado</span>
+                                        {% elif med.end_date and med.end_date < today_date %} {# Assuming today_date is passed or use a custom filter #}
+                                            <span class="badge bg-secondary ms-2">Concluído</span>
+                                        {% endif %}
+                                    </h5>
                                     {% if med.descricao %}
                                     <p class="mb-1 small text-muted" style="white-space: pre-wrap;">{{ med.descricao }}</p>
                                     {% endif %}
@@ -66,7 +94,7 @@
                                         <i class="fas fa-calendar-alt me-1"></i>
                                         Início: {{ med.start_date | format_date_display if med.start_date else 'N/A' }}
                                         {% if med.end_date %}, Fim: {{ med.end_date | format_date_display }}{% endif %}
-                                        {% if med.is_regular %}<span class="badge bg-info-subtle text-info-emphasis rounded-pill ms-2">Uso Contínuo</span>{% endif %}
+                                        {# is_regular não é exibido aqui pois o histórico é de não regulares #}
                                     </small>
                                     {% if med.times %}
                                     <small class="d-block text-muted mt-1">
@@ -92,14 +120,14 @@
 
     <footer class="bg-dark text-white text-center py-4 mt-auto">
         <div class="container">
-            <p class="mb-0">&copy; <span id="currentYearFooter"></span> Gerenciador de Medicamentos. Todos os direitos reservados.</p>
+            <p class="mb-0">&copy; <span id="currentYearFooterHist"></span> Gerenciador de Medicamentos. Todos os direitos reservados.</p>
         </div>
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const currentYearEl = document.getElementById('currentYearFooter');
+            const currentYearEl = document.getElementById('currentYearFooterHist');
             if(currentYearEl) currentYearEl.textContent = new Date().getFullYear();
         });
     </script>
