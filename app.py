@@ -4,12 +4,13 @@ from psycopg2 import sql
 from psycopg2.extras import RealDictCursor
 from flask import Flask, render_template, request, redirect, url_for, flash
 from dotenv import load_dotenv
-from datetime import datetime, date # Adicionado 'date'
+from datetime import datetime, date 
+from collections import defaultdict # Para agrupar no histórico
 
 load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = os.getenv("FLASK_SECRET_KEY", "uma_chave_secreta_muito_forte_e_diferente")
+app.secret_key = os.getenv("FLASK_SECRET_KEY", "uma_chave_secreta_muito_forte_e_diferente_ainda_mais_segura")
 
 # Configuração da Base de Dados
 DB_HOST = os.getenv("DB_HOST", "postgres_db")
@@ -40,6 +41,16 @@ def init_db():
     try:
         with conn.cursor() as cur:
             cur.execute("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";")
+            
+            cur.execute("""
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name='medicamentos' AND column_name='is_archived';
+            """)
+            if not cur.fetchone():
+                cur.execute("ALTER TABLE medicamentos ADD COLUMN is_archived BOOLEAN DEFAULT FALSE;")
+                print("Coluna 'is_archived' adicionada à tabela 'medicamentos'.")
+
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS medicamentos (
                     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -52,11 +63,13 @@ def init_db():
                     quantity NUMERIC(10, 2) DEFAULT 1,
                     form VARCHAR(50) DEFAULT 'comprimido',
                     unit VARCHAR(50) DEFAULT 'unidade',
+                    is_archived BOOLEAN DEFAULT FALSE,
                     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
                 );
             """)
             cur.execute("CREATE INDEX IF NOT EXISTS idx_med_start_date ON medicamentos(start_date);")
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_med_is_archived ON medicamentos(is_archived);")
             conn.commit()
         print("Tabela 'medicamentos' verificada/criada com sucesso.")
     except psycopg2.Error as e:
@@ -67,29 +80,35 @@ def init_db():
 
 @app.template_filter('format_date_display')
 def format_date_display_filter(date_obj):
-    """Formata um objeto date ou string de data para DD/MM/YYYY."""
-    if not date_obj:
-        return 'N/A'
+    if not date_obj: return 'N/A'
     if isinstance(date_obj, str):
         try:
-            # Tenta converter de YYYY-MM-DD para objeto date
             date_obj = datetime.strptime(date_obj, '%Y-%m-%d').date()
         except ValueError:
-            return date_obj # Retorna a string original se não puder parsear
-    if isinstance(date_obj, date): # Verifica se é um objeto date (ou datetime)
+            try:
+                date_obj = datetime.fromisoformat(date_obj.replace('Z', '+00:00')).date()
+            except ValueError:
+                 return date_obj 
+    if isinstance(date_obj, date):
         return date_obj.strftime('%d/%m/%Y')
-    return str(date_obj) # Fallback
+    return str(date_obj)
 
 @app.route('/')
 def index():
     conn = get_db_connection()
     medicamentos_list = []
-    show_form_on_load = request.args.get('show_form', False) # Para reabrir form após erro
+    show_form_on_load = request.args.get('show_form', False) 
 
     if conn:
         try:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                cur.execute("SELECT * FROM medicamentos ORDER BY created_at DESC")
+                query = sql.SQL("""
+                    SELECT * FROM medicamentos 
+                    WHERE is_archived = FALSE AND 
+                          (is_regular = TRUE OR end_date IS NULL OR end_date >= CURRENT_DATE)
+                    ORDER BY created_at DESC
+                """)
+                cur.execute(query)
                 medicamentos_list = cur.fetchall()
         except psycopg2.Error as e:
             flash(f"Erro ao buscar medicamentos: {e}", "error")
@@ -115,6 +134,48 @@ def index():
                            editing_med=None,
                            show_form_on_load=show_form_on_load)
 
+@app.route('/historico')
+def historico():
+    conn = get_db_connection()
+    todos_medicamentos_nao_regulares = []
+    if conn:
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                # Modificação: Busca medicamentos que NÃO SÃO de uso regular.
+                # Eles podem estar arquivados ou ter a data final passada.
+                query = sql.SQL("""
+                    SELECT * FROM medicamentos 
+                    WHERE is_regular = FALSE 
+                    ORDER BY start_date DESC, name ASC
+                """)
+                cur.execute(query)
+                todos_medicamentos_nao_regulares = cur.fetchall()
+        except psycopg2.Error as e:
+            flash(f"Erro ao buscar histórico de medicamentos: {e}", "error")
+        finally:
+            conn.close()
+    else:
+        flash("Não foi possível conectar à base de dados para buscar o histórico.", "error")
+
+    historico_agrupado = defaultdict(list)
+    for med in todos_medicamentos_nao_regulares: # Agora iterando sobre a lista filtrada
+        if med.get('start_date'):
+            start_dt = med['start_date']
+            if isinstance(start_dt, str):
+                try:
+                    start_dt = datetime.strptime(start_dt, '%Y-%m-%d').date()
+                except ValueError: 
+                    try:
+                         start_dt = datetime.fromisoformat(start_dt.replace('Z', '+00:00')).date()
+                    except ValueError:
+                        continue
+            
+            if isinstance(start_dt, date):
+                mes_ano_key = start_dt.strftime("%B %Y").capitalize()
+                historico_agrupado[mes_ano_key].append(med)
+    
+    return render_template('historico.html', historico_agrupado=historico_agrupado)
+
 
 @app.route('/add', methods=['POST'])
 def add_medication():
@@ -123,11 +184,12 @@ def add_medication():
         descricao = request.form.get('descricao')
         start_date_str = request.form.get('startDate')
         end_date_str = request.form.get('endDate')
-        times = [t for t in request.form.getlist('times[]') if t]
+        times = [t for t in request.form.getlist('times[]') if t] 
         is_regular = 'isRegular' in request.form
         quantity_str = request.form.get('quantity', '1')
         form_type = request.form.get('formType', 'comprimido')
         unit = request.form.get('unit', 'unidade')
+        is_archived = False 
 
         if not name or not start_date_str:
             flash('Nome e Data de Início são obrigatórios!', 'error')
@@ -146,10 +208,10 @@ def add_medication():
             try:
                 with conn.cursor() as cur:
                     query = sql.SQL("""
-                        INSERT INTO medicamentos (name, descricao, start_date, end_date, times, is_regular, quantity, form, unit)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        INSERT INTO medicamentos (name, descricao, start_date, end_date, times, is_regular, quantity, form, unit, is_archived)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     """)
-                    cur.execute(query, (name, descricao, start_date, end_date, times or None, is_regular, quantity, form_type, unit))
+                    cur.execute(query, (name, descricao, start_date, end_date, times or None, is_regular, quantity, form_type, unit, is_archived))
                     conn.commit()
                 flash('Medicamento adicionado com sucesso!', 'success')
             except psycopg2.Error as e:
@@ -168,16 +230,22 @@ def edit_medication(med_id):
         flash("Não foi possível conectar à base de dados.", "error")
         return redirect(url_for('index'))
 
-    editing_med = None # Inicializa para o escopo da função
-    try: # Bloco try para buscar o medicamento para o GET
+    editing_med = None
+    try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur_get:
-            cur_get.execute("SELECT * FROM medicamentos WHERE id = %s", (str(med_id),))
+            # Apenas medicamentos não arquivados E (regulares OU com data final futura/nula) podem ser editados aqui
+            # Esta lógica é para garantir que o formulário de edição só apareça para medicamentos "ativos" na lista principal
+            query_get_med = sql.SQL("""
+                SELECT * FROM medicamentos 
+                WHERE id = %s AND is_archived = FALSE AND
+                      (is_regular = TRUE OR end_date IS NULL OR end_date >= CURRENT_DATE)
+            """)
+            cur_get.execute(query_get_med, (str(med_id),))
             editing_med = cur_get.fetchone()
     except psycopg2.Error as e:
         flash(f"Erro ao buscar dados para edição: {e}", "error")
         if conn: conn.close()
         return redirect(url_for('index'))
-
 
     if request.method == 'POST':
         name = request.form.get('name')
@@ -192,11 +260,8 @@ def edit_medication(med_id):
 
         if not name or not start_date_str:
             flash('Nome e Data de Início são obrigatórios!', 'error')
-            # Para manter o formulário preenchido em caso de erro no POST, precisamos re-renderizar
-            # com os dados atuais do formulário (ou do 'editing_med' se não foram alterados).
-            # No entanto, redirecionar para o GET é mais simples e comum.
-            if conn: conn.close() # Fecha a conexão antes de redirecionar
-            return redirect(url_for('edit_medication', med_id=med_id)) # Redireciona para o GET
+            if conn: conn.close()
+            return redirect(url_for('edit_medication', med_id=med_id))
 
         try:
             quantity = float(quantity_str) if quantity_str else 1.0
@@ -207,30 +272,32 @@ def edit_medication(med_id):
             if conn: conn.close()
             return redirect(url_for('edit_medication', med_id=med_id))
 
-        try: # Bloco try para a query de UPDATE
+        try:
             with conn.cursor() as cur_post:
-                query = sql.SQL("""
+                query_update = sql.SQL("""
                     UPDATE medicamentos 
                     SET name=%s, descricao=%s, start_date=%s, end_date=%s, times=%s, 
                         is_regular=%s, quantity=%s, form=%s, unit=%s, updated_at=NOW()
-                    WHERE id=%s
-                """)
-                cur_post.execute(query, (name, descricao, start_date, end_date, times or None, is_regular, quantity, form_type, unit, med_id))
+                    WHERE id=%s AND is_archived = FALSE 
+                """) # AND is_archived = FALSE para segurança adicional
+                cur_post.execute(query_update, (name, descricao, start_date, end_date, times or None, is_regular, quantity, form_type, unit, med_id))
                 conn.commit()
-            flash('Medicamento atualizado com sucesso!', 'success')
+                if cur_post.rowcount == 0:
+                     flash('Medicamento não encontrado para atualização ou já arquivado.', 'warning')
+                else:
+                    flash('Medicamento atualizado com sucesso!', 'success')
         except psycopg2.Error as e:
             flash(f"Erro ao atualizar medicamento: {e}", "error")
         finally:
             if conn: conn.close()
         return redirect(url_for('index'))
 
-    # Método GET: Carregar dados do medicamento para edição
-    if not editing_med: # Se não foi encontrado no bloco try inicial
-        flash('Medicamento não encontrado para edição.', 'error')
+    # Método GET
+    if not editing_med: # Se não foi encontrado ou não cumpre os critérios para edição
+        flash('Medicamento não disponível para edição (pode estar arquivado ou ter data final passada e não ser regular).', 'warning')
         if conn: conn.close()
         return redirect(url_for('index'))
     
-    # Formata datas para o formulário HTML no GET
     if editing_med.get('start_date') and isinstance(editing_med.get('start_date'), (datetime, date)):
         editing_med['start_date'] = editing_med['start_date'].strftime('%Y-%m-%d')
     if editing_med.get('end_date') and isinstance(editing_med.get('end_date'), (datetime, date)):
@@ -238,19 +305,23 @@ def edit_medication(med_id):
     if not editing_med.get('times'):
         editing_med['times'] = []
     
-    # Busca todos os medicamentos para exibir na lista de fundo
-    medicamentos_list_for_edit_page = []
+    medicamentos_list_for_edit_page = [] 
     try:
-        # Reabre a conexão se foi fechada ou usa a existente se ainda aberta e válida
         if conn.closed: conn = get_db_connection() 
         if conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cur_list_edit:
-                cur_list_edit.execute("SELECT * FROM medicamentos ORDER BY created_at DESC")
+                query_list = sql.SQL("""
+                    SELECT * FROM medicamentos 
+                    WHERE is_archived = FALSE AND 
+                          (is_regular = TRUE OR end_date IS NULL OR end_date >= CURRENT_DATE)
+                    ORDER BY created_at DESC
+                """)
+                cur_list_edit.execute(query_list)
                 medicamentos_list_for_edit_page = cur_list_edit.fetchall()
     except psycopg2.Error as e:
         print(f"Erro ao buscar lista de medicamentos para página de edição: {e}")
     finally:
-        if conn: conn.close() # Fecha a conexão após buscar a lista
+        if conn: conn.close()
 
     grouped_medications_for_edit_page = {}
     for med_item in medicamentos_list_for_edit_page:
@@ -270,26 +341,26 @@ def edit_medication(med_id):
                            show_form_on_load=True)
 
 
-@app.route('/delete/<uuid:med_id>', methods=['POST'])
-def delete_medication(med_id):
+@app.route('/delete/<uuid:med_id>', methods=['POST']) 
+def delete_medication(med_id): # Esta função agora ARQUIVA
     conn = get_db_connection()
     if conn:
         try:
             with conn.cursor() as cur:
-                cur.execute("DELETE FROM medicamentos WHERE id = %s", (str(med_id),))
+                cur.execute("UPDATE medicamentos SET is_archived = TRUE, updated_at = NOW() WHERE id = %s", (str(med_id),))
                 conn.commit()
-            flash('Medicamento excluído com sucesso!', 'success')
+                if cur.rowcount == 0:
+                    flash('Medicamento não encontrado.', 'warning')
+                else:
+                    flash('Medicamento movido para o histórico (arquivado).', 'success')
         except psycopg2.Error as e:
-            flash(f"Erro ao excluir medicamento: {e}", "error")
+            flash(f"Erro ao arquivar medicamento: {e}", "error")
         finally:
             conn.close()
     else:
-        flash("Não foi possível conectar à base de dados para excluir o medicamento.", "error")
+        flash("Não foi possível conectar à base de dados para arquivar o medicamento.", "error")
     return redirect(url_for('index'))
 
 if __name__ == '__main__':
     with app.app_context():
         init_db()
-    # O Gunicorn será usado para iniciar a aplicação em produção (ver Dockerfile CMD)
-    # Para desenvolvimento local, pode usar: app.run(host='0.0.0.0', port=5001, debug=True)
-    # Mas como o Dockerfile agora usa `flask run`, não é estritamente necessário aqui.

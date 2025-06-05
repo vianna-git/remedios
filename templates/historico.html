@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Histórico de Medicamentos - Flask & Bootstrap</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+     <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f9fa;
+        }
+    </style>
+</head>
+<body class="d-flex flex-column min-vh-100">
+    <header class="bg-primary text-white shadow-sm py-3">
+        <div class="container d-flex justify-content-between align-items-center">
+            <h1 class="h3 mb-0">
+                <i class="fas fa-history me-2"></i>Histórico de Medicamentos
+            </h1>
+            <a href="{{ url_for('index') }}" class="btn btn-light btn-sm">
+                <i class="fas fa-arrow-left me-1"></i>Voltar à Lista Principal
+            </a>
+        </div>
+    </header>
+
+    <main class="container my-4 flex-grow-1">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="mb-4">
+                {% for category, message in messages %}
+                    <div class="alert {% if category == 'error' %}alert-danger{% elif category == 'success' %}alert-success{% else %}alert-info{% endif %} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% if historico_agrupado %}
+            <div class="accordion" id="historicoAccordion">
+                {% for mes_ano, medicamentos_no_mes in historico_agrupado.items() %}
+                <div class="accordion-item mb-3 border rounded-3 shadow-sm">
+                    <h2 class="accordion-header" id="heading-hist-{{ loop.index }}">
+                        <button class="accordion-button {% if not loop.first %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-hist-{{ loop.index }}" aria-expanded="{% if loop.first %}true{% else %}false{% endif %}" aria-controls="collapse-hist-{{ loop.index }}">
+                            <i class="fas fa-calendar-check me-2 text-primary"></i>Mês/Ano: {{ mes_ano }}
+                            <span class="badge bg-secondary rounded-pill ms-2">{{ medicamentos_no_mes|length }}</span>
+                        </button>
+                    </h2>
+                    <div id="collapse-hist-{{ loop.index }}" class="accordion-collapse collapse {% if loop.first %}show{% endif %}" aria-labelledby="heading-hist-{{ loop.index }}" data-bs-parent="#historicoAccordion">
+                        <div class="accordion-body">
+                            <ul class="list-group list-group-flush">
+                                {% for med in medicamentos_no_mes %}
+                                <li class="list-group-item px-0 py-3 {% if med.is_archived %}opacity-75 bg-light{% endif %}">
+                                    <h5 class="mb-1 h6 fw-bold">{{ med.name }} {% if med.is_archived %}<span class="badge bg-warning text-dark ms-2">Arquivado</span>{% endif %}</h5>
+                                    {% if med.descricao %}
+                                    <p class="mb-1 small text-muted" style="white-space: pre-wrap;">{{ med.descricao }}</p>
+                                    {% endif %}
+                                    <small class="d-block text-muted">
+                                        <i class="fas fa-prescription-bottle-alt me-1"></i>{{ med.quantity }} {{ med.unit }} ({{ med.form }})
+                                    </small>
+                                    <small class="d-block text-muted mt-1">
+                                        <i class="fas fa-calendar-alt me-1"></i>
+                                        Início: {{ med.start_date | format_date_display if med.start_date else 'N/A' }}
+                                        {% if med.end_date %}, Fim: {{ med.end_date | format_date_display }}{% endif %}
+                                        {% if med.is_regular %}<span class="badge bg-info-subtle text-info-emphasis rounded-pill ms-2">Uso Contínuo</span>{% endif %}
+                                    </small>
+                                    {% if med.times %}
+                                    <small class="d-block text-muted mt-1">
+                                        <i class="fas fa-clock me-1"></i>
+                                        Horários: {{ med.times | join(', ') }}
+                                    </small>
+                                    {% endif %}
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-5 px-3 bg-light rounded-3 shadow-sm">
+                <i class="fas fa-folder-open fa-3x text-muted mb-3"></i>
+                <h3 class="h5 text-muted mb-0">Nenhum medicamento no histórico.</h3>
+            </div>
+        {% endif %}
+    </main>
+
+    <footer class="bg-dark text-white text-center py-4 mt-auto">
+        <div class="container">
+            <p class="mb-0">&copy; <span id="currentYearFooter"></span> Gerenciador de Medicamentos. Todos os direitos reservados.</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentYearEl = document.getElementById('currentYearFooter');
+            if(currentYearEl) currentYearEl.textContent = new Date().getFullYear();
+        });
+    </script>
+</body>
+</html>

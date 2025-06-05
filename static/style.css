@@ -1,27 +1,17 @@
-/* static/style.css - Pode ser simplificado ou usado para ajustes finos */
+/* static/style.css */
 body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
     background-color: #f8f9fa; /* Cor de fundo suave padrão do Bootstrap */
-}
-
-/* Estilos para o cabeçalho, se necessário ajustes além do Bootstrap */
-header.bg-primary {
-    /* Exemplo: border-bottom: 3px solid #0a58ca; */
-}
-
-/* Ajustes nos cartões e acordeão se necessário */
-.card, .accordion-item {
-    border-color: #dee2e6; /* Cor de borda padrão do Bootstrap */
+    color: #212529; /* Cor de texto padrão do Bootstrap */
 }
 
 .form-section legend {
-    font-weight: 500; /* medium */
-    color: #495057; /* gray-700 do Bootstrap */
+    font-weight: 500;
     padding: 0 0.5rem;
-    font-size: 1rem; /* Ajuste o tamanho se necessário */
+    font-size: 1rem;
+    color: #495057;
 }
 
-/* Botão para remover horário */
 .btn-remove-time {
     padding: 0.3rem 0.6rem;
     font-size: 0.8rem;
@@ -37,8 +27,24 @@ input[type="number"] {
   -moz-appearance: textfield; /* Para Firefox */
 }
 
-/* Pequeno ajuste para que os fieldsets tenham um respiro interno */
-fieldset.form-section {
-    padding-top: 0.75rem;
-    padding-bottom: 0.75rem;
+/* Estilos para a página de histórico */
+.historico-mes-ano {
+    font-size: 1.25rem;
+    font-weight: 500;
+    color: #0d6efd; /* primary color */
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #dee2e6;
+}
+.historico-item {
+    padding: 0.75rem;
+    border: 1px solid #e9ecef;
+    border-radius: 0.25rem;
+    margin-bottom: 0.75rem;
+    background-color: #fff;
+}
+.historico-item.arquivado {
+    background-color: #f8f9fa; /* um pouco mais escuro para indicar arquivado */
+    opacity: 0.8;
 }
