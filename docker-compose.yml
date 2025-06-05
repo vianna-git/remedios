@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: . # Assume que o Dockerfile está na mesma pasta que este docker-compose.yml
+      dockerfile: Dockerfile # O nome do seu Dockerfile para o frontend
+    ports:
+      - "8090:80" # Mapeia a porta 8080 do host para a porta 80 do contentor Nginx
+    depends_on:
+      # - db # Opcional, mas bom para indicar dependência se o backend precisar da DB no arranque
+      - backend-api # Depende do serviço de backend se este existir
+    networks:
+      - new-infra_home-network
+
+  # Serviço de Backend API (Exemplo - Você precisará criar este serviço)
+  # Este serviço conteria a lógica para interagir com a base de dados 'db'.
+  # O seu frontend JavaScript faria chamadas para este API (ex: /api/medicamentos).
+  backend-api:
+    build:
+      context: ./backend # Supondo que o código do seu backend está numa pasta 'backend'
+      dockerfile: Dockerfile.backend # Um Dockerfile específico para o seu backend
+    ports:
+      - "5000:5000" # Expõe a porta do backend (ajuste conforme necessário)
+    environment:
+      # Variáveis de ambiente para o backend se conectar à base de dados
+      - DATABASE_URL=postgresql://user:password@postgres_db:5432/medicamentos_db
+      # Adicione outras variáveis de ambiente necessárias para o seu backend
+    # depends_on:
+      # - db
+    networks:
+      - new-infra_home-network
+    # Para desenvolvimento, pode montar o volume do código do backend:
+    # volumes:
+    #   - ./backend:/usr/src/app 
+
+  # db:
+  #   image: postgres:13-alpine # Usar uma imagem oficial do PostgreSQL
+  #   environment:
+  #     POSTGRES_USER: user # Defina o seu utilizador da base de dados
+  #     POSTGRES_PASSWORD: password # Defina a sua password da base de dados
+  #     POSTGRES_DB: medicationsdb # Defina o nome da sua base de dados
+  #   ports:
+  #     - "5432:5432" # Mapeia a porta 5432 do host para a porta 5432 do contentor PostgreSQL
+  #                    # Útil para aceder à base de dados diretamente com uma ferramenta de cliente, se necessário
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data # Persiste os dados da base de dados
+  #   networks:
+  #     - app-network
+
+# volumes:
+  # postgres_data: # Define um volume nomeado para persistir os dados da PostgreSQL
+
+# networks:
+#   app-network: # Define uma rede customizada para os contentores comunicarem
+#     driver: bridge
+
+networks:
+  new-infra_home-network:
+    external: true
+    name: new-infra_home-network
+    driver: bridge
