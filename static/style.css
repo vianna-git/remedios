@@ -1,0 +1,44 @@
+/* static/style.css - Pode ser simplificado ou usado para ajustes finos */
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    background-color: #f8f9fa; /* Cor de fundo suave padrão do Bootstrap */
+}
+
+/* Estilos para o cabeçalho, se necessário ajustes além do Bootstrap */
+header.bg-primary {
+    /* Exemplo: border-bottom: 3px solid #0a58ca; */
+}
+
+/* Ajustes nos cartões e acordeão se necessário */
+.card, .accordion-item {
+    border-color: #dee2e6; /* Cor de borda padrão do Bootstrap */
+}
+
+.form-section legend {
+    font-weight: 500; /* medium */
+    color: #495057; /* gray-700 do Bootstrap */
+    padding: 0 0.5rem;
+    font-size: 1rem; /* Ajuste o tamanho se necessário */
+}
+
+/* Botão para remover horário */
+.btn-remove-time {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.8rem;
+}
+
+/* Garante que os inputs numéricos não mostrem os botões de spin padrão */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield; /* Para Firefox */
+}
+
+/* Pequeno ajuste para que os fieldsets tenham um respiro interno */
+fieldset.form-section {
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+}
