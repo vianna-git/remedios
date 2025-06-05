@@ -1,19 +1,23 @@
-# Usar uma imagem base oficial do Nginx (versão Alpine é leve)
-FROM nginx:alpine
+# Usar uma imagem base oficial do Python
+FROM python:3.9-slim
 
-# Remover a configuração padrão do Nginx (opcional, mas limpa)
-RUN rm /etc/nginx/conf.d/default.conf
+# Definir variáveis de ambiente para Python não bufferizar stdout/stderr
+ENV PYTHONUNBUFFERED 1
+ENV PYTHONDONTWRITEBYTECODE 1
 
-# Copiar o ficheiro de configuração personalizado do Nginx
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Definir o diretório de trabalho
+WORKDIR /app
 
-# Copiar os ficheiros da aplicação (o seu index.html) para o diretório web do Nginx
-# Certifique-se de que o seu ficheiro index.html
-# está na mesma pasta que este Dockerfile quando for construir a imagem.
-COPY index.html /usr/share/nginx/html/index.html
+# Copiar o ficheiro de requisitos e instalar as dependências Python
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Expor a porta 80 (porta padrão do HTTP)
-EXPOSE 80
+# Copiar o resto da aplicação para o diretório de trabalho
+COPY . .
 
-# Comando para iniciar o Nginx quando o container for executado
-CMD ["nginx", "-g", "daemon off;"]
+# Expor a porta que a aplicação Flask/Gunicorn vai usar
+EXPOSE 5001
+
+# Comando para iniciar a aplicação com Gunicorn
+# Ajuste o número de 'workers' conforme necessário para a sua aplicação e recursos
+CMD ["gunicorn", "--bind", "0.0.0.0:5001", "--workers", "2", "app:app"]
